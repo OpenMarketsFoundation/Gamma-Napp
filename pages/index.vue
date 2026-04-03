@@ -47,6 +47,9 @@ const add = (product) => {
   cart.addToCart(product, 1)
 }
 
+const latestProducts = computed(() => products.value.slice(0, 3))
+const inventoryProducts = computed(() => products.value.slice(3))
+
 onMounted(async () => {
   let identity = null
   let relayMap = null
@@ -147,13 +150,37 @@ onMounted(async () => {
         <p class="mt-2 text-sm text-[var(--muted)]">This npub currently has no published listings.</p>
       </section>
 
-      <section v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <ProductCard
-          v-for="product in products"
-          :key="product.id"
-          :product="product"
-          @add="add"
-        />
+      <section v-else>
+        <div class="mb-8">
+          <div class="mb-3 flex items-end justify-between gap-3">
+            <h2 class="text-xl font-semibold tracking-tight">Latest Products</h2>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ProductCard
+              v-for="product in latestProducts"
+              :key="product.id"
+              :product="product"
+              @add="add"
+            />
+          </div>
+        </div>
+
+        <div v-if="inventoryProducts.length">
+          <div class="mb-3 flex items-end justify-between gap-3">
+            <h2 class="text-xl font-semibold tracking-tight">Inventory</h2>
+            <p class="text-xs text-[var(--muted)]">Everything else in stock</p>
+          </div>
+
+          <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <ProductCard
+              v-for="product in inventoryProducts"
+              :key="product.id"
+              :product="product"
+              @add="add"
+            />
+          </div>
+        </div>
       </section>
     </main>
 

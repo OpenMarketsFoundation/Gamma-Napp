@@ -37,7 +37,7 @@ onMounted(() => {
         <div v-else class="flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)] bg-stone-100 text-xs font-bold text-[var(--muted)]">
           M
         </div>
-        <span>{{ merchantProfile?.name || 'Merchant Shop' }}</span>
+        <span>{{ merchantProfile?.name || 'loading' }}</span>
       </NuxtLink>
 
       <nav class="flex items-center gap-4 text-sm font-medium">
