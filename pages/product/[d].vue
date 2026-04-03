@@ -3,6 +3,7 @@ import { useShopIdentity } from '~/composables/useShopIdentity'
 import { useRelayLists } from '~/composables/useRelayLists'
 import { useMarketplace } from '~/composables/useMarketplace'
 import { useMerchantProfile } from '~/composables/useMerchantProfile'
+import { useShopDebug } from '~/composables/useShopDebug'
 import { useCartStore } from '~/stores/cart'
 import ShopHeader from '~/components/shop/ShopHeader.vue'
 
@@ -12,12 +13,14 @@ const { resolveIdentity } = useShopIdentity()
 const { resolveRelayMap } = useRelayLists()
 const { fetchProductByD } = useMarketplace()
 const { fetchMerchantProfile } = useMerchantProfile()
+const { setShopDebug } = useShopDebug()
 
 const product = ref(null)
 const quantity = ref(1)
 const loading = ref(true)
 const error = ref('')
 const merchantProfile = ref(null)
+const merchantNpub = ref('')
 
 const decodedDTag = computed(() => {
   const raw = Array.isArray(route.params.d) ? route.params.d[0] : route.params.d
@@ -42,10 +45,13 @@ const addToCart = () => {
 onMounted(async () => {
   try {
     const identity = await resolveIdentity()
+    merchantNpub.value = identity.merchantNpub
+    console.log('[product] resolved identity', identity)
     const relayMap = await resolveRelayMap({
       merchantPubkey: identity.merchantPubkey,
       discoveryRelays: identity.discoveryRelays
     })
+    console.log('[product] resolved relay map', relayMap)
 
     merchantProfile.value = await fetchMerchantProfile({
       merchantPubkey: identity.merchantPubkey,
@@ -57,12 +63,30 @@ onMounted(async () => {
       dTag: decodedDTag.value,
       relays: relayMap.merchantOutbox
     })
+    console.log('[product] loaded product', product.value)
+
+    setShopDebug({
+      merchantNpub: identity.merchantNpub,
+      merchantPubkey: identity.merchantPubkey,
+      identitySource: identity.source,
+      relaySource: relayMap.sources.merchant,
+      merchantOutbox: relayMap.merchantOutbox,
+      merchantInbox: relayMap.merchantInbox,
+      paymentListenRelays: relayMap.paymentListenRelays,
+      orderPublishRelays: relayMap.orderPublishRelays,
+      lastPage: 'product',
+      details: {
+        productDTag: decodedDTag.value,
+        found: !!product.value
+      }
+    })
 
     if (!product.value) {
       error.value = 'Product not found.'
     }
   } catch (cause) {
     error.value = cause.message || 'Failed to load product.'
+    console.error('[product] failed loading product', cause)
   } finally {
     loading.value = false
   }
@@ -71,7 +95,7 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen pb-12">
-    <ShopHeader :item-count="cart.totalItems" :merchant-profile="merchantProfile" />
+    <ShopHeader :item-count="cart.totalItems" :merchant-profile="merchantProfile" :merchant-npub="merchantNpub" />
 
     <main class="mx-auto max-w-6xl px-4 pt-8 sm:px-6 lg:px-8">
       <NuxtLink to="/" class="text-sm font-medium">← Back to products</NuxtLink>

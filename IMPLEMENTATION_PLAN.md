@@ -105,3 +105,26 @@
 - Default theme is now `dark` on first load.
 - Added `light` theme override via `html[data-theme="light"]` CSS variables while keeping shared component structure.
 - Toggle label updates contextually (`Light mode` when dark is active, `Dark mode` when light is active).
+
+## 12) Nsite Deployment Integration (Implemented)
+
+- Added nsite project configuration at `.nsite/config.json` for root-site publishing with static SPA fallback.
+- Added local nsyte binary support (`tools/nsyte`) and npm scripts for repeatable nsite operations:
+  - `nsite:build`
+  - `nsite:deploy`
+  - `nsite:status`
+  - `nsite:debug`
+- Build output path is integrated for deployment from `./.output/public`.
+
+## 13) Deployment Keypair + Live Verification (Implemented)
+
+- Generated a dedicated deployment keypair and used it for nsite publishing verification.
+- Successfully deployed static site manifest to relays with nsyte and verified relay coverage via status command.
+- Confirmed live gateway resolution at an npub-based nsite URL.
+
+## 14) Clone-This-Nsite UX + Sandwich Functionality (Implemented)
+
+- Added a large shiny purple floating button at bottom-right.
+- Clicking it opens an explanation-first popup before any signer action, including messaging that cloned instances resolve products from the user's own npub.
+- Integrated sandwich functionality via `@nsite/stealthis` web component script and manual popup placement.
+- Included CTA text exactly as requested: `Clone this Nsite to my own Npub !`.

@@ -9,10 +9,15 @@ defineProps({
   merchantProfile: {
     type: Object,
     default: null
+  },
+  merchantNpub: {
+    type: String,
+    default: ''
   }
 })
 
 const { theme, initializeTheme, toggleTheme } = useTheme()
+const NOSTR_OSTRICH_ICON_URL = '/nostr-assets/nostr-logo-black.svg'
 
 onMounted(() => {
   initializeTheme()
@@ -36,6 +41,28 @@ onMounted(() => {
       </NuxtLink>
 
       <nav class="flex items-center gap-4 text-sm font-medium">
+        <NuxtLink to="/">Products</NuxtLink>
+        <NuxtLink to="/cart" class="rounded-full border border-[var(--line)] px-3 py-1">
+          Cart ({{ itemCount }})
+        </NuxtLink>
+
+        <a
+          v-if="merchantNpub"
+          :href="`https://njump.me/${merchantNpub}`"
+          target="_blank"
+          rel="noopener noreferrer"
+          class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)]"
+        >
+          <span class="sr-only">Open merchant npub</span>
+          <img
+            :src="NOSTR_OSTRICH_ICON_URL"
+            alt=""
+            class="h-5 w-5 object-contain"
+            :style="{ filter: theme === 'dark' ? 'invert(1)' : 'none' }"
+            aria-hidden="true"
+          >
+        </a>
+
         <button
           class="inline-flex h-9 w-9 items-center justify-center rounded-full border border-[var(--line)]"
           @click="toggleTheme"
@@ -76,10 +103,6 @@ onMounted(() => {
             <path d="M12 3a7 7 0 1 0 9 9 9 9 0 1 1-9-9z" />
           </svg>
         </button>
-        <NuxtLink to="/">Products</NuxtLink>
-        <NuxtLink to="/cart" class="rounded-full border border-[var(--line)] px-3 py-1">
-          Cart ({{ itemCount }})
-        </NuxtLink>
       </nav>
     </div>
   </header>

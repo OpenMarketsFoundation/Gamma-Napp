@@ -3,6 +3,7 @@ import { useShopIdentity } from '~/composables/useShopIdentity'
 import { useRelayLists } from '~/composables/useRelayLists'
 import { useMarketplace } from '~/composables/useMarketplace'
 import { useMerchantProfile } from '~/composables/useMerchantProfile'
+import { useShopDebug } from '~/composables/useShopDebug'
 import { useCartStore } from '~/stores/cart'
 import ShopHeader from '~/components/shop/ShopHeader.vue'
 import ProductCard from '~/components/shop/ProductCard.vue'
@@ -17,41 +18,107 @@ const { resolveIdentity } = useShopIdentity()
 const { resolveRelayMap } = useRelayLists()
 const { fetchProducts } = useMarketplace()
 const { fetchMerchantProfile } = useMerchantProfile()
+const { setShopDebug } = useShopDebug()
 
 const loading = ref(true)
 const error = ref('')
+const relayWarning = ref('')
 const merchantNpub = ref('')
-const relaySource = ref('')
 const products = ref([])
 const merchantProfile = ref(null)
+const hasConfirmedProductQuery = ref(false)
+const showNoProductsDialog = ref(false)
+
+const isRelayIssue = (cause) => {
+  const text = String(cause?.message || cause || '').toLowerCase()
+  return [
+    'relay',
+    'websocket',
+    'connection',
+    'network',
+    'timeout',
+    'timed out',
+    'fetch failed',
+    'econn'
+  ].some((key) => text.includes(key))
+}
 
 const add = (product) => {
   cart.addToCart(product, 1)
 }
 
 onMounted(async () => {
-  try {
-    const identity = await resolveIdentity()
-    merchantNpub.value = identity.merchantNpub
+  let identity = null
+  let relayMap = null
 
-    const relayMap = await resolveRelayMap({
+  try {
+    identity = await resolveIdentity()
+    merchantNpub.value = identity.merchantNpub
+    console.log('[shop] resolved identity', identity)
+  } catch (cause) {
+    relayWarning.value = 'Could not resolve merchant identity from this host/config.'
+    error.value = ''
+    console.error('[shop] failed resolving identity', cause)
+    loading.value = false
+    return
+  }
+
+  try {
+    relayMap = await resolveRelayMap({
       merchantPubkey: identity.merchantPubkey,
       discoveryRelays: identity.discoveryRelays
     })
+    console.log('[shop] resolved relay map', relayMap)
+  } catch (cause) {
+    relayWarning.value = 'Relay connection failed. Please check relay connectivity and try again.'
+    error.value = ''
+    console.error('[shop] relay resolution failed', cause)
+    loading.value = false
+    return
+  }
 
-    relaySource.value = relayMap.sources.merchant
-
+  try {
     merchantProfile.value = await fetchMerchantProfile({
       merchantPubkey: identity.merchantPubkey,
       relays: relayMap.merchantOutbox
     })
+  } catch (cause) {
+    console.warn('[shop] profile fetch failed, continuing', cause)
+  }
+
+  try {
 
     products.value = await fetchProducts({
       merchantPubkey: identity.merchantPubkey,
       relays: relayMap.merchantOutbox
     })
+    console.log('[shop] loaded products', products.value)
+    hasConfirmedProductQuery.value = true
+    showNoProductsDialog.value = products.value.length === 0
+
+    setShopDebug({
+      merchantNpub: identity.merchantNpub,
+      merchantPubkey: identity.merchantPubkey,
+      identitySource: identity.source,
+      relaySource: relayMap.sources.merchant,
+      merchantOutbox: relayMap.merchantOutbox,
+      merchantInbox: relayMap.merchantInbox,
+      paymentListenRelays: relayMap.paymentListenRelays,
+      orderPublishRelays: relayMap.orderPublishRelays,
+      lastPage: 'index',
+      details: {
+        productsLoaded: products.value.length,
+        noProductsConfirmed: products.value.length === 0
+      }
+    })
   } catch (cause) {
-    error.value = cause.message || 'Failed to load products.'
+    if (isRelayIssue(cause)) {
+      relayWarning.value = 'Relay connection failed while loading products. Please retry once relays are reachable.'
+      error.value = ''
+    } else {
+      error.value = cause.message || 'Failed to load products.'
+    }
+    console.error('[shop] failed loading products', cause)
   } finally {
     loading.value = false
   }
@@ -60,20 +127,11 @@ onMounted(async () => {
 
 <template>
   <div class="min-h-screen pb-12">
-    <ShopHeader :item-count="cart.totalItems" :merchant-profile="merchantProfile" />
+    <ShopHeader :item-count="cart.totalItems" :merchant-profile="merchantProfile" :merchant-npub="merchantNpub" />
 
     <main class="mx-auto max-w-6xl px-4 pt-8 sm:px-6 lg:px-8">
-      <section class="mb-8 rounded-3xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-sm">
-        <p class="text-xs uppercase tracking-[0.2em] text-[var(--muted)]">Gamma Market / NIP-99</p>
-        <h1 class="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">Minimal Webshop</h1>
-        <p class="mt-3 max-w-3xl text-[var(--muted)]">
-          Products are resolved from the merchant outbox relay set using inbox/outbox discovery.
-        </p>
-        <div class="mt-4 text-sm text-[var(--muted)]">
-          Merchant: <span class="font-mono text-xs">{{ merchantNpub }}</span>
-          <span class="mx-2">-</span>
-          Relay source: {{ relaySource }}
-        </div>
+      <section v-if="relayWarning" class="mb-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-900">
+        {{ relayWarning }}
       </section>
 
       <section v-if="error" class="rounded-2xl border border-red-200 bg-red-50 p-4 text-red-800">
@@ -84,9 +142,9 @@ onMounted(async () => {
         <div v-for="n in 6" :key="n" class="h-72 animate-pulse rounded-2xl border border-[var(--line)] bg-[var(--surface)]" />
       </section>
 
-      <section v-else-if="products.length === 0" class="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
+      <section v-else-if="hasConfirmedProductQuery && products.length === 0" class="rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-8 text-center">
         <p class="text-lg font-semibold">No products found for this merchant.</p>
-        <p class="mt-2 text-sm text-[var(--muted)]">Check the merchant npub or relay list and refresh.</p>
+        <p class="mt-2 text-sm text-[var(--muted)]">This npub currently has no published listings.</p>
       </section>
 
       <section v-else class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -98,5 +156,33 @@ onMounted(async () => {
         />
       </section>
     </main>
+
+    <div
+      v-if="showNoProductsDialog && hasConfirmedProductQuery && !relayWarning && !error"
+      class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-4"
+      @click.self="showNoProductsDialog = false"
+    >
+      <div class="w-full max-w-xl rounded-2xl border border-[var(--line)] bg-[var(--surface)] p-6 shadow-2xl">
+        <h2 class="text-2xl font-bold">No products yet</h2>
+        <p class="mt-3 text-sm text-[var(--muted)]">
+          Hey! Ready to start listing your first products?
+        </p>
+        <p class="mt-2 text-sm text-[var(--muted)]">
+          Visit one of these marketplaces to publish your first listings:
+        </p>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <a href="https://plebeian.market" target="_blank" rel="noopener noreferrer" class="rounded-full border border-[var(--line)] px-3 py-1 text-sm">plebeian.market</a>
+          <a href="https://shopstr.store" target="_blank" rel="noopener noreferrer" class="rounded-full border border-[var(--line)] px-3 py-1 text-sm">shopstr.store</a>
+          <a href="https://conduit.market" target="_blank" rel="noopener noreferrer" class="rounded-full border border-[var(--line)] px-3 py-1 text-sm">conduit.market</a>
+        </div>
+
+        <div class="mt-6 flex justify-end">
+          <button class="rounded-lg border border-[var(--line)] px-4 py-2 text-sm" @click="showNoProductsDialog = false">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>

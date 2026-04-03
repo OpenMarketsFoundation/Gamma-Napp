@@ -7,6 +7,7 @@ import { useNostrOrders } from '~/composables/useNostrOrders'
 import { useFiatToSats } from '~/composables/useFiatToSats'
 import { useLightningInvoice } from '~/composables/useLightningInvoice'
 import { useMerchantProfile } from '~/composables/useMerchantProfile'
+import { useShopDebug } from '~/composables/useShopDebug'
 import ShopHeader from '~/components/shop/ShopHeader.vue'
 
 useSeoMeta({
@@ -21,6 +22,7 @@ const { generateGuestIdentity, buildOrderEvent, signAndPublish, findPaymentReque
 const { loading: ratesLoading, error: ratesError, convert, fetchRates } = useFiatToSats()
 const { fetchMerchantLud16, requestInvoiceFromLud16 } = useLightningInvoice()
 const { fetchMerchantProfile } = useMerchantProfile()
+const { setShopDebug } = useShopDebug()
 
 const step = ref(1)
 const submitting = ref(false)
@@ -35,6 +37,7 @@ const pollTimer = ref(null)
 const invoiceFallbackError = ref('')
 const invoiceFallbackLoading = ref(false)
 const merchantProfile = ref(null)
+const merchantNpub = ref('')
 
 const form = reactive({
   name: cart.shippingInfo.name || '',
@@ -98,7 +101,26 @@ const setupCheckout = async () => {
   try {
     loadingSetup.value = true
     merchantIdentity.value = await resolveIdentity()
+    merchantNpub.value = merchantIdentity.value.merchantNpub
+    console.log('[cart] resolved identity', merchantIdentity.value)
     await refreshRelayMap()
+    console.log('[cart] resolved relay map', relayMap.value)
+
+    setShopDebug({
+      merchantNpub: merchantIdentity.value.merchantNpub,
+      merchantPubkey: merchantIdentity.value.merchantPubkey,
+      identitySource: merchantIdentity.value.source,
+      relaySource: relayMap.value?.sources?.merchant || '',
+      merchantOutbox: relayMap.value?.merchantOutbox || [],
+      merchantInbox: relayMap.value?.merchantInbox || [],
+      paymentListenRelays: relayMap.value?.paymentListenRelays || [],
+      orderPublishRelays: relayMap.value?.orderPublishRelays || [],
+      lastPage: 'cart',
+      details: {
+        cartItems: cart.items.length,
+        subtotalSats: subtotalSats.value
+      }
+    })
 
     if (relayMap.value?.merchantOutbox?.length) {
       merchantProfile.value = await fetchMerchantProfile({
@@ -108,6 +130,7 @@ const setupCheckout = async () => {
     }
   } catch (cause) {
     setupError.value = cause.message || 'Could not initialize checkout.'
+    console.error('[cart] checkout setup failed', cause)
   } finally {
     loadingSetup.value = false
   }
@@ -172,6 +195,7 @@ const startPollingPayment = () => {
     })
 
     if (!payment) return false
+    console.log('[cart] received payment request', payment)
 
     cart.setOrderState({
       status: 'invoice-received',
@@ -218,8 +242,10 @@ const requestFallbackInvoice = async () => {
       invoiceAmount: String(subtotalSats.value),
       invoiceExpiration: ''
     })
+    console.log('[cart] fallback invoice from lud16', payment)
   } catch (cause) {
     invoiceFallbackError.value = cause.message || 'Could not request fallback lightning invoice.'
+    console.error('[cart] fallback invoice request failed', cause)
   } finally {
     invoiceFallbackLoading.value = false
   }
@@ -283,6 +309,7 @@ const submitOrder = async () => {
       invoiceAmount: '',
       invoiceExpiration: ''
     })
+    console.log('[cart] submitted order event', { eventId: event.id, orderId, event })
 
     step.value = 4
     startPollingPayment()
@@ -294,6 +321,7 @@ const submitOrder = async () => {
     }, 1500)
   } catch (cause) {
     error.value = cause.message || 'Order submission failed.'
+    console.error('[cart] order submission failed', cause)
   } finally {
     submitting.value = false
   }
@@ -335,7 +363,7 @@ watch(pricedCurrencies, async () => {
 
 <template>
   <div class="min-h-screen pb-12">
-    <ShopHeader :item-count="cart.totalItems" :merchant-profile="merchantProfile" />
+    <ShopHeader :item-count="cart.totalItems" :merchant-profile="merchantProfile" :merchant-npub="merchantNpub" />
 
     <main class="mx-auto max-w-5xl px-4 pt-8 sm:px-6 lg:px-8">
       <h1 class="text-3xl font-bold tracking-tight">Checkout</h1>
