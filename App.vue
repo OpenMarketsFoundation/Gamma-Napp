@@ -1,6 +1,5 @@
 <script setup>
 import NsiteCloneFab from '~/components/shop/NsiteCloneFab.vue'
-import DeveloperConsoleFab from '~/components/shop/DeveloperConsoleFab.vue'
 import ShopSplash from '~/components/shop/ShopSplash.vue'
 import { useShopBootstrap } from '~/composables/useShopBootstrap'
 
@@ -12,6 +11,7 @@ const shouldBootstrapRoute = computed(() => {
   return path === '/'
     || path === '/products'
     || path === '/categories'
+    || path === '/portal'
     || path === '/cart'
     || path.startsWith('/product/')
 })
@@ -50,6 +50,5 @@ watch(shouldBootstrapRoute, async (needsBootstrap) => {
     />
     <NuxtPage />
     <NsiteCloneFab />
-    <DeveloperConsoleFab />
   </div>
 </template>

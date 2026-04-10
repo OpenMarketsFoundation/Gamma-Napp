@@ -127,8 +127,16 @@ onMounted(async () => {
         <p class="mt-3 text-sm text-[var(--muted)]">
           Hey! Ready to start listing your first products?
         </p>
+        <div class="mt-4">
+          <NuxtLink
+            to="/portal"
+            class="inline-flex items-center rounded-lg bg-purple-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-purple-700"
+          >
+            Open Merchant Portal
+          </NuxtLink>
+        </div>
         <p class="mt-2 text-sm text-[var(--muted)]">
-          Visit one of these marketplaces to publish your first listings:
+          Alternatively visit one of these marketplaces to publish your first listings:
         </p>
 
         <div class="mt-4 flex flex-wrap gap-2">
