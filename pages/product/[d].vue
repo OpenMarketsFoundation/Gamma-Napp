@@ -143,7 +143,7 @@ onMounted(async () => {
               v-model.number="quantity"
               type="number"
               min="1"
-              class="w-20 rounded-lg border border-[var(--line)] bg-white px-3 py-2"
+              class="w-20 rounded-lg border border-[var(--line)] bg-white px-3 py-2 text-black"
             >
             <button
               class="rounded-lg px-4 py-2 text-sm font-semibold text-white"

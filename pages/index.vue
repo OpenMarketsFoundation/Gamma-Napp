@@ -43,12 +43,8 @@ const isRelayIssue = (cause) => {
   ].some((key) => text.includes(key))
 }
 
-const add = (product) => {
-  cart.addToCart(product, 1)
-}
-
 const latestProducts = computed(() => products.value.slice(0, 3))
-const inventoryProducts = computed(() => products.value.slice(3))
+const inventoryProducts = computed(() => products.value.slice(3, 15))
 
 onMounted(async () => {
   let identity = null
@@ -153,7 +149,7 @@ onMounted(async () => {
       <section v-else>
         <div class="mb-8">
           <div class="mb-3 flex items-end justify-between gap-3">
-            <h2 class="text-xl font-semibold tracking-tight">Latest Products</h2>
+            <h2 class="text-xl font-semibold tracking-tight">New Arrivals</h2>
           </div>
 
           <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -161,7 +157,6 @@ onMounted(async () => {
               v-for="product in latestProducts"
               :key="product.id"
               :product="product"
-              @add="add"
             />
           </div>
         </div>
@@ -177,7 +172,6 @@ onMounted(async () => {
               v-for="product in inventoryProducts"
               :key="product.id"
               :product="product"
-              @add="add"
             />
           </div>
         </div>

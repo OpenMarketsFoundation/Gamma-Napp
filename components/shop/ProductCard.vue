@@ -6,8 +6,6 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['add'])
-
 const productPath = computed(() => {
   return `/product/${encodeURIComponent(props.product.d)}`
 })
@@ -43,14 +41,9 @@ const outOfStock = computed(() => {
 
       <div class="mt-auto flex items-center justify-between gap-2">
         <p class="text-base font-semibold">{{ product.price.display }}</p>
-        <button
-          class="rounded-lg px-3 py-2 text-sm font-semibold text-white transition"
-          :class="outOfStock ? 'cursor-not-allowed bg-stone-400' : 'bg-[var(--brand)] hover:bg-[var(--brand-strong)]'"
-          :disabled="outOfStock"
-          @click="emit('add', product)"
-        >
-          {{ outOfStock ? 'Out of stock' : 'Add to cart' }}
-        </button>
+        <span class="rounded-full border border-[var(--line)] px-3 py-1 text-xs font-semibold text-[var(--muted)]">
+          {{ outOfStock ? 'Out of stock' : 'In stock' }}
+        </span>
       </div>
     </div>
   </article>
